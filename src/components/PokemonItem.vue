@@ -10,13 +10,13 @@
     <div>
       <div class="pokemon-card__title">{{ pokemonName }}</div>
       <div>
-        <span
+        <div
             v-if="!isLoading && !description"
             @click="loadDescription"
             class="pokemon-card__info"
         >
           Show description
-        </span>
+        </div>
         <div class="loader" v-if="isLoading"></div>
         <div v-if="description">
           {{ description }}
@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { Pokemon } from "../types/TPokemon";
 import { computed, ref } from "vue";
+import fetchHelper from "../helpers/fetchHelper";
 
 const props = defineProps<{
   pokemon: Pokemon
@@ -48,14 +49,21 @@ const capitalized = (name: string) => {
 const pokemonName = computed(() => capitalized(props.pokemon.name));
 const loadDescription = () => {
   isLoading.value = true;
-  fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}`)
-      .then(result => result.json())
+  fetchHelper(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}`)
       .then(data => {
+        console.log(data);// @TODO DudnikES
         isLoading.value = false;
-
-        // @TODO Данные довольно муторные, не стал описывать интерфейс
         description.value = data.flavor_text_entries[0].flavor_text;
       });
+
+  // fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}`)
+  //     .then(result => result.json())
+  //     .then(data => {
+  //       isLoading.value = false;
+  //
+  //       // @TODO Данные довольно муторные, не стал описывать интерфейс
+  //       description.value = data.flavor_text_entries[0].flavor_text;
+  //     });
 }
 </script>
 
@@ -63,14 +71,23 @@ const loadDescription = () => {
 .pokemon-card {
   display: flex;
   background: #e1ecdf;
-  margin: 30px 0;
   padding: 20px;
+  height: 90px;
   border-radius: 10px;
+  transform: translateX(100px);
+  opacity: 0;
+  transition: 150ms;
+
+  &.show {
+    transform: translateX(0);
+    opacity: 1;
+  }
 
   &__image-wrapper {
     display: flex;
     align-items: center;
     margin-right: 20px;
+    width: 100px;
   }
 
   &__image {
@@ -87,6 +104,7 @@ const loadDescription = () => {
     text-decoration: underline;
   }
 
+  // @TODO Loader component
   .loader {
     width: 20px;
     aspect-ratio: 1;
