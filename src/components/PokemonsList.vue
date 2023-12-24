@@ -1,53 +1,85 @@
 <template>
   <div ref="container" class="container">
     <PokemonItem v-for="pokemon in pokemons" :key="pokemon.name" :pokemon="pokemon" />
+    <LoadingIcon v-if="isLoading" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeMount, onMounted, ref, watch } from "vue";
-import { Pokemon } from "../types/TPokemon";
+import { computed, nextTick, onBeforeMount, ref, watch } from "vue";
+import { Pokemon, PokemonResponse } from "../types/TPokemon";
 import PokemonItem from "./PokemonItem.vue";
+import LoadingIcon from "./LoadingIcon.vue";
 import fetchHelper from "../helpers/fetchHelper";
 
 const pokemons = ref<Array<Pokemon>>([]);
-
-let offset = ref<number>(0);
 const container = ref<HTMLDivElement>(null);
-const observer = ref<IntersectionObserver>(null);
+const page = ref<number>(0);
+let total = ref<number>(0);
+let isLoading = ref<boolean>(false);
+const CHUNK_SIZE = 10;
 
-const getData = () => {
-  offset.value = pokemons.value.length;
-  const url = `https://pokeapi.co/api/v2/pokemon?limit=10&offset=${offset}`;
-  fetchHelper(url)
-      .then(data => {
-        pokemons.value.push(...data.results);
-      });
-}
+const observer: IntersectionObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    entry.target.classList.toggle('show', entry.isIntersecting);
+    if (entry.isIntersecting) {
+      observer.unobserve(entry.target);
+    }
+  });
+}, {
+  rootMargin: "-100px"
+});
+
+const lastCardObserver: IntersectionObserver = new IntersectionObserver(async (entries) => {
+  const lastCard = entries[0];
+  if (!lastCard.isIntersecting) return;
+
+  lastCardObserver.unobserve(lastCard.target);
+  const isSuccess = await loadNewCards();
+  if (isSuccess) {
+    const cards = Array.from(container.value.children);
+    lastCardObserver.observe(cards.at(-1));
+  }
+}, {
+  rootMargin: "100px"
+});
 
 onBeforeMount(() => {
-    getData();
+  fetchHelper(`https://pokeapi.co/api/v2/pokemon?limit=${CHUNK_SIZE}&offset=0`)
+      .then((data: PokemonResponse) => {
+        total.value = data.count;
+        pokemons.value.push(...data.results);
+      });
 });
 
-onMounted(() => {
-  observer.value = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      entry.target.classList.toggle('show', entry.isIntersecting);
-      if (entry.isIntersecting) {
-        observer.value.unobserve(entry.target);
-      }
-    });
-  }, {
-    rootMargin: "-100px"
-  });
-});
+/**
+ * When user reached the last card it tries to load additional chunk
+ * @return boolean
+ */
+const loadNewCards = async (): Promise<boolean> => {
+  isLoading.value = false;
+  const offset = page.value * CHUNK_SIZE;
+  if (offset >= total.value) return false;
 
-watch(() => pokemons.value.length, async () => {
+  isLoading.value = true;
+  fetchHelper(`https://pokeapi.co/api/v2/pokemon?limit=${CHUNK_SIZE}&offset=${offset}`)
+      .then((data: PokemonResponse) => {
+        pokemons.value.push(...data.results);
+        isLoading.value = false;
+      });
+
+  return true;
+};
+
+watch(() => pokemons.value.length, async (newLength: number, oldLength:number) => {
   await nextTick();
-  const cards = Array.from(container.value.children);
+  page.value += 1;
+  const cards = Array.from(container.value.children).slice(oldLength - newLength);
+
+  lastCardObserver.observe(cards.at(-1));
 
   cards.forEach(card => {
-    observer.value.observe(card);
+    observer.observe(card);
   });
 });
 </script>
