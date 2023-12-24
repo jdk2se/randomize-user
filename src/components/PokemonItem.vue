@@ -12,12 +12,12 @@
       <div>
         <div
             v-if="!isLoading && !description"
-            @click="loadDescription"
             class="pokemon-card__info"
+            @click="loadDescription"
         >
           Show description
         </div>
-        <LoadingIcon v-if="isLoading" />
+        <LoadingIcon v-if="isLoading"/>
         <div v-if="description">
           {{ description }}
         </div>
@@ -26,14 +26,15 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, ref } from "vue";
-import { Pokemon, PokemonDetails } from "../types/TPokemon";
-import fetchHelper from "../helpers/fetchHelper";
-import LoadingIcon from "./LoadingIcon.vue";
+<script setup
+        lang="ts">
+import { computed, ref } from 'vue';
+import { Pokemon, PokemonDetails } from '../types/TPokemon';
+import fetchHelper from '../helpers/fetchHelper';
+import LoadingIcon from './LoadingIcon.vue';
 
 const props = defineProps<{
-  pokemon: Pokemon
+  pokemon: Pokemon;
 }>();
 
 const pokemonId = props.pokemon.url.match(/\d+(?=\D*$)/)[0];
@@ -50,7 +51,7 @@ const capitalized = (name: string): string => {
   const rest = name.slice(1);
 
   return capitalizedFirst + rest;
-}
+};
 
 const pokemonName = computed(() => capitalized(props.pokemon.name));
 
@@ -59,12 +60,13 @@ const pokemonName = computed(() => capitalized(props.pokemon.name));
  */
 const loadDescription = () => {
   isLoading.value = true;
-  fetchHelper(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}`)
-      .then((data: PokemonDetails) => {
+  fetchHelper(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}`).then(
+      (data: PokemonDetails) => {
         isLoading.value = false;
         description.value = data.flavor_text_entries[0].flavor_text;
-      });
-}
+      },
+  );
+};
 </script>
 
 <style lang="scss">
